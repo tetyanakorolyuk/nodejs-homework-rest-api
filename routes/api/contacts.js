@@ -9,7 +9,7 @@ const joiSchema = Joi.object({
   email: Joi.string().required(),
   phone: Joi.string().required(),
 })
-
+console.log(1);
 const joiUpdateSchema = Joi.object({
   name: Joi.string(),
   email: Joi.string(),
