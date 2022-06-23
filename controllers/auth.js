@@ -1,4 +1,6 @@
 const { User } = require("../models/user");
+const { nanoid } = require("nanoid");
+const { sendEmail } = require("../helpers");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const gravatar = require("gravatar");
@@ -13,9 +15,20 @@ const registerUser = async(req, res, next)=> {
         return res.status(409).json({ message: "Email in use" });
       }
     const avatarURL = gravatar.url(email);
-    const newUser = new User({ email, subscription, avatarURL });
+
+    const verificationToken = nanoid();
+
+    const newUser = new User({ email, subscription, avatarURL, verificationToken });
     newUser.setPassword(password);
-    newUser.save();
+    await newUser.save();
+
+    const mail = {
+      to: email,
+      subject: "Confirm email",
+      html: `<a target="_blank" href="http://localhost:3000/api/users/verify/${verificationToken}">Confirm email</a>`
+    };
+    await sendEmail(mail);
+
     res.status(201).json({
       status: "success",
       code: 201,
@@ -23,7 +36,8 @@ const registerUser = async(req, res, next)=> {
         user: {
           email,
           subscription,
-          avatarURL
+          avatarURL,
+          verificationToken
         }
       }
   });
@@ -36,8 +50,8 @@ const login = async(req, res, next)=> {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
-    if(!user || !user.comparePassword(password)){
-      return res.status(401).json({ message: "Email or password is wrong" });
+    if(!user || !user.verify ||!user.comparePassword(password)){
+      return res.status(401).json({ message: "Email is wrong or not verify, or password is wrong" });
     }
     const payload = {
       id: user._id
